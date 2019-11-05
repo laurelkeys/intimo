@@ -19,22 +19,27 @@ def int16_to_int8(v_int16):
     # subdivide int16 into 2 int8's, called x and y (0 and 1 are the offsets in bytes)
     dt = np.dtype((np.int16, { 'x': (np.int8, 0), 'y': (np.int8, 1) }))
     view = v_int16.view(dtype=dt)
-    return np.stack((view['x'], view['y']), axis=-1)
+    v_int8 = np.empty((view['y'].size + view['x'].size,), dtype='int8')
+    v_int8[0::2] = view['y']
+    v_int8[1::2] = view['x']
+    return v_int8
 
 def int8_to_int16(v_int8):
-    view_x, view_y = np.split(v_int8, 2, axis=-1)
-    return (view_y.reshape(-1).astype('int16') << 8) + view_x.reshape(-1).astype('int16')
+    view_y = v_int8[0::2].astype('int16')
+    view_x = v_int8[1::2].astype('int16')
+    v_int16 = (view_y << 8) | (view_x & ((1 << 8) - 1))
+    return v_int16
 
 if __name__ == "__main__":
-    # FIXME
-    a = np.array([MIN_INT16, MIN_INT16+1, 
-                  -3, -2, -1, 0, 1, 2, 3, 
-                  MAX_INT16-1, MAX_INT16], dtype='int16')
-    print(a)
+    a = np.array([x for x in range(MIN_INT16, MAX_INT16)], dtype='int16')
+    print(a.dtype, a.shape, a)
+    print(np.array([bin(x) for x in a]))
     b = int16_to_int8(a)
-    print(b)
+    print(b.dtype, b.shape, b)
+    print(np.array([bin(x) for x in b]))
     c = int8_to_int16(b)
-    print(c)
+    print(c.dtype, c.shape, c)
+    print(np.array([bin(x) for x in c]))
     print()
     print((a == c))
     print((a == c).all())
