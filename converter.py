@@ -31,17 +31,14 @@ def int8_to_int16(v_int8):
     return v_int16
 
 if __name__ == "__main__":
-    a = np.array([x for x in range(MIN_INT16, MAX_INT16)], dtype='int16')
-    print(a.dtype, a.shape, a)
-    print(np.array([bin(x) for x in a]))
-    b = int16_to_int8(a)
-    print(b.dtype, b.shape, b)
-    print(np.array([bin(x) for x in b]))
-    c = int8_to_int16(b)
-    print(c.dtype, c.shape, c)
-    print(np.array([bin(x) for x in c]))
-    print()
-    print((a == c))
-    print((a == c).all())
+    v_int16 = np.array([x for x in range(MIN_INT16, MAX_INT16)], dtype='int16')
+    print((v_int16 == int8_to_int16(int16_to_int8(v_int16))).all())
+
+    v_int8 = np.array([x for x in range(MIN_INT8, MAX_INT8)], dtype='int8')
+    print((v_int8 == uint8_to_int8(int8_to_uint8(v_int8))).all())
+
+    # int16 -> int8 -> uint8 -> int8 -> int16
+    print((v_int16 == int8_to_int16(uint8_to_int8(int8_to_uint8(int16_to_int8(v_int16))))).all())
+
 
 # ref.: https://stackoverflow.com/questions/25298592/converting-32-bit-integer-into-array-of-four-8-bit-integers-in-python
