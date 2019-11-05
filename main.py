@@ -7,8 +7,10 @@ from prompt_yes_no import *
 from scipy.io.wavfile import write
 
 DTYPE = "int16"
+
 SAMPLE_RATE = 8000 # voice recording
-OUTPUT_FOLDER = os.path.join("D:\\", "Music")
+
+# OUTPUT_FOLDER = os.path.join("D:\\", "Music")
 OUTPUT_FOLDER = '.'
 
 filename = argv[1].strip() if len(argv) > 1 else "output"
@@ -35,3 +37,6 @@ print(__recording.dtype, __recording.shape, __recording.min(), __recording.max()
 print((recording == __recording).all())
 
 # ref.: https://realpython.com/playing-and-recording-sound-python/
+#       http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
+#       https://web.archive.org/web/20141213140451/https://ccrma.stanford.edu/courses/422/projects/WaveFormat/
+#       https://web.archive.org/web/20140221054954/http://home.roadrunner.com/~jgglatt/tech/wave.htm
