@@ -20,8 +20,8 @@ def show(bgr_img):
     plt.imshow(rgb_img, vmin=0, vmax=255)
     plt.show()
 
-SHOW_IMAGE = True
-PLAY_AUDIO = True
+SHOW_IMAGE = False
+PLAY_AUDIO = False
 OUTPUT_FOLDER = '.'
 
 audio_fname = 'output-mono.wav'
