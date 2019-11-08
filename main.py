@@ -8,33 +8,43 @@ from scipy.io.wavfile import write
 
 DTYPE = "int16"
 
+MONO, STEREO = 1, 2 # number of audio channels
+
 SAMPLE_RATE = 8000 # voice recording
 
 # OUTPUT_FOLDER = os.path.join("D:\\", "Music")
 OUTPUT_FOLDER = '.'
 
-filename = argv[1].strip() if len(argv) > 1 else "output"
+def record(duration_in_sec, fs=SAMPLE_RATE, mode='mono', wait=True):
+    assert mode in ['mono', 'stereo']
+    recording = sd.rec(frames=int(duration_in_sec * SAMPLE_RATE), samplerate=fs, 
+                       channels=MONO if mode == 'mono' else STEREO, dtype=DTYPE)
+    if wait:
+        sd.wait() # wait until recording is finished
+    return recording
+
+def save(fname, recording, fs=SAMPLE_RATE):
+    write(fname, fs, recording) # save as WAV file
+
+filename = argv[1].strip() if len(argv) > 1 else "output-mono"
 filename = os.path.join(OUTPUT_FOLDER, filename + ".wav")
-if os.path.exists(filename):
-    if prompt_yes_no(f"'{filename}' will be overwritten. Continue?", True):
-        os.remove(filename)
-    else:
-        exit()
+# if os.path.exists(filename):
+#     if prompt_yes_no(f"'{filename}' will be overwritten. Continue?", True):
+#         os.remove(filename)
+#     else:
+#         exit()
 
-fs = SAMPLE_RATE
-seconds = 3 # duration of recording
-recording = sd.rec(frames=int(seconds * SAMPLE_RATE), samplerate=fs, channels=2, dtype=DTYPE)
-sd.wait() # wait until recording is finished
-
-print(recording.dtype, recording.shape, recording.min(), recording.max())
-write(filename, fs, recording) # save as WAV file
+# recording = record(duration_in_sec=3)
+# print(recording.dtype, recording.shape, recording.min(), recording.max())
+# save(filename, recording)
 
 __recording, __fs = sf.read(filename, dtype=DTYPE)
-sd.play(__recording, __fs)
-status = sd.wait() # wait until file is done playing
 print(__recording.dtype, __recording.shape, __recording.min(), __recording.max())
+# sd.play(__recording, __fs)
+# status = sd.wait() # wait until file is done playing
 
-print((recording == __recording).all())
+# print((recording == __recording).all())
+
 
 # ref.: https://realpython.com/playing-and-recording-sound-python/
 #       http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
