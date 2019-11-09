@@ -8,24 +8,29 @@ height, width = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PRO
 plane_img = np.zeros((height, width), dtype='uint8')
 print(plane_img.shape)
 
-plane = 7
-FRAME_DELAY_MS = 1000
+i = 0
+done = False
+FRAME_DELAY_MS = 250
 while cap.isOpened():
     ret, frame = cap.read()
 
     if ret:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        cv2.imshow('frame', set_bit_plane(gray, plane, plane_img))
+        cv2.imshow('frame', set_bit_plane_partial(gray, 6, plane_img, changed_bits=i))
     else:
-        print('restarting')
+        # print('restarting')
         cap.set(cv2.CAP_PROP_POS_FRAMES, -1)
-        cv2.imshow('frame', set_bit_plane(gray, plane, plane_img))
+        cv2.imshow('frame', set_bit_plane_partial(gray, 6, plane_img, changed_bits=i))
     
     if cv2.waitKey(FRAME_DELAY_MS) & 0xFF == ord('q'):
         break
 
-    print(plane)
-    plane = (plane + 1) % 8
+    if not done:
+        plane_img.ravel()[i:i+10000] = 0 # 0 or 1
+        i += 10000
+        if i > plane_img.size: # FIXME prevent 'overshooting'
+            print('done')
+            done = True
 
 cap.release()
 cv2.destroyAllWindows()
