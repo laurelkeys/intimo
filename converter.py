@@ -30,6 +30,22 @@ def int8_to_int16(v_int8):
     v_int16 = (view_y << 8) | (view_x & ((1 << 8) - 1))
     return v_int16
 
+def convert(v, to):
+    if v.dtype == to:
+        return v
+    assert all([dt in ['int8', 'uint8', 'int16'] for dt in [v.dtype, to]])
+    def _convert_int8():
+        return int8_to_uint8(v) if to == 'uint8' else int8_to_int16(v)
+    def _convert_uint8():
+        _v_int8 = uint8_to_int8(v)
+        return _v_int8 if to == 'int8' else int8_to_int16(_v_int8)
+    def _convert_int16():
+        _v_int8 = int16_to_int8(v)
+        return _v_int8 if to == 'int8' else int8_to_uint8(_v_int8)
+    return _convert_uint8() if v.dtype == 'uint8' \
+      else _convert_int16() if v.dtype == 'int16' \
+      else _convert_int8()
+
 if __name__ == "__main__":
     v_int16 = np.array([x for x in range(MIN_INT16, MAX_INT16)], dtype='int16')
     print((v_int16 == int8_to_int16(int16_to_int8(v_int16))).all())
