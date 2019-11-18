@@ -44,7 +44,7 @@ def in_stream_callback(in_data, frames, time, status):
     in_data_list.add(np.copy(in_data))
 
 # NOTE the number of frames passed to the stream callback can be set with the 'blocksize' param
-stream = sd.InputStream(channels=MONO, samplerate=SAMPLE_RATE,
+stream = sd.InputStream(channels=MONO, samplerate=SAMPLE_RATE, dtype='int16',
                         callback=in_stream_callback)
 with stream:
     hidden_bits = 0 # next bit to write to (indexed on the flattened hidden_plane)
@@ -63,7 +63,8 @@ with stream:
             break
 
         in_data = np.concatenate(in_data_list.getAll()) # concatenate the stored audio blocks
-        in_data = in_data.reshape(-1)
+        assert in_data.dtype == np.int16
+        in_data = convert(_in_data.reshape(-1), to='uint8')
         length = in_data.size
 
         if not done:
@@ -81,6 +82,7 @@ with stream:
 
 from scipy.io import wavfile
 print(':)')
+assert hidden_plane.dtype == np.uint8
 cap_audio = convert(hidden_plane.flatten(), to='int16')
 wavfile.write('out.wav', SAMPLE_RATE, hidden_plane.ravel()) # FIXME the audio is corrupted
 print(':D')
