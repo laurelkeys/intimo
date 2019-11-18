@@ -16,9 +16,6 @@ from item_store import ItemStore
 MONO, STEREO = 1, 2 # number of audio channels
 SAMPLE_RATE  = 44100 # 8kHz for voice recording
 
-WINDOW_ms = 200
-INTERVAL_ms = 30
-
 #########################################
 
 # mic setup
@@ -64,7 +61,7 @@ with stream:
 
         in_data = np.concatenate(in_data_list.getAll()) # concatenate the stored audio blocks
         assert in_data.dtype == np.int16
-        in_data = convert(_in_data.reshape(-1), to='uint8')
+        in_data = convert(in_data.reshape(-1), to='uint8')
         length = in_data.size
 
         if not done:
@@ -84,5 +81,5 @@ from scipy.io import wavfile
 print(':)')
 assert hidden_plane.dtype == np.uint8
 cap_audio = convert(hidden_plane.flatten(), to='int16')
-wavfile.write('out.wav', SAMPLE_RATE, hidden_plane.ravel()) # FIXME the audio is corrupted
+wavfile.write('out.wav', SAMPLE_RATE, cap_audio)
 print(':D')
