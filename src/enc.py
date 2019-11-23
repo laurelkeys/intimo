@@ -11,7 +11,6 @@ import sounddevice as sd
 from scipy.io import wavfile
 
 from codec import *
-from bitplane import set_bit_plane_partial
 from converter import convert
 
 def get_parser():
@@ -42,16 +41,9 @@ def setup_camera(args):
     if args.verbose:
         print("device_info:")
         pprint.pprint(sd.query_devices(kind='input'))
-        
-        start = time.time()
     
     # DirectShow (via videoInput)
     cap = cv2.VideoCapture(index=0, apiPreference=cv2.CAP_DSHOW)
-    
-    if args.verbose:
-        print(f"Camera setup took {(time.time() - start):.1f}s")
-
-    # NOTE cv2.VideoCapture(0) may take a few seconds
     if not cap.read()[0]:
         raise Exception("No camera found")
 
@@ -68,17 +60,15 @@ def save_frame(__frame, message_uint8, stream, args):
         # FIXME check if a key (e.g. space) was pressed to save this finished frame
         warnings.warn("\nWarning: waiting for key press isn't currently supported")
     
-    fname = f"{time.strftime('%Y%m%d-%H%M%S')}_{stream._samplerate:.0f}_{stream._channels:.0f}"
+    fname = f"{time.strftime('%Y%m%d-%H%M%S')}_{stream._samplerate:.0f}_{stream._channels:.0f}_{args.bit_plane}"
     fname = os.path.join(args.output_folder, fname)
 
     cv2.imwrite(filename=fname + ".png", img=__frame)
     if args.verbose:
         print(f"Saved image to '{fname}.png'")
 
-    # TODO get audio from __frame instead of message_uint8
     if args.save_audio:
-        #decoded_audio = decode(__frame, args.bit_plane)
-        decoded_audio = message_uint8
+        decoded_audio = decode(__frame, args.bit_plane)
         decoded_audio = convert(decoded_audio, to='int16')
         
         if stream._channels == 2:
@@ -98,10 +88,12 @@ def main(args):
         warnings.warn("\nWarning: waiting for key press isn't currently supported")
 
     cap, height, width, depth = setup_camera(args) # NOTE this takes around 20s
-    message_uint8 = np.zeros(dtype='uint8', shape=height * width * depth // 8 )
+    print()
+    buffer_factor = 1.2
+    message_uint8 = np.zeros(dtype='uint8', shape=int(buffer_factor * (height * width * depth) // 8 ))
     if args.verbose:
-        print(f"(height, width, depth)=({height}, {width}, {depth})")
-        print(f"message_uint8: shape={message_uint8.shape} | size={message_uint8.size}")
+        print(f"(height, width, depth): ({height}, {width}, {depth})")
+        print("message_uint8.size:", message_uint8.size)
 
     # list to store the audio blocks captured by the audio input stream
     in_data_list = []
@@ -119,10 +111,12 @@ def main(args):
         print("number of audio channels:", stream._channels, 
               "(mono)" if stream._channels == 1 else "(stereo)")
 
+    print()
     with stream: # listen for live audio input
-        hidden_bytes, done, __frame = 0, False, None
-        a = False
+
+        hidden_bytes, done = 0, False
         while cap.isOpened():
+
             ret, frame = cap.read() # get image from camera
             if not ret:
                 print(f"cap.read() returned {ret}", 
@@ -132,15 +126,23 @@ def main(args):
                 if cv2.waitKey(FRAME_DELAY_MS) & 0xFF == ord('q'):
                     break
 
-                if a: a = not a
+                __frame, done = encode(frame, args.bit_plane, message_uint8[ : hidden_bytes])
+                cv2.imshow('frame', __frame)
 
                 if done:
                     save_frame(__frame, message_uint8, stream, args)
-                    hidden_bytes, done = 0, False # reset values
-                    a = True
+                    
+                    _, max_bits = max_bytes_and_bits(height, width, depth)
+                    message_bits = np.unpackbits(message_uint8[ : hidden_bytes])
+                    remaining_bits = message_bits.size - max_bits
+                    if remaining_bits > 0:
+                        if args.verbose:
+                            print(f"> {remaining_bits} bits left out")
+                        remaining_bytes = remaining_bits // 8
+                        message_uint8[ : remaining_bytes] = message_uint8[hidden_bytes - remaining_bytes : hidden_bytes]
 
-                __frame = encode(frame, args.bit_plane, message_uint8, debug=a)
-                cv2.imshow('frame', __frame)
+                    hidden_bytes, done = remaining_bytes, False # reset values
+                    print()
                 
                 # get all audio blocks that have been captured since the last loop iteration
                 stored_audio_blocks, in_data_list = in_data_list, []
@@ -156,10 +158,11 @@ def main(args):
                         message_uint8.ravel()[hidden_bytes : hidden_bytes + length] = audio_uint8
                         hidden_bytes += length
                     else:
+                        # NOTE we shouldn't get here if buffer_factor is large enough
                         max_length = message_uint8.size - hidden_bytes
                         if args.verbose:
                             print(f"Hiding {max_length} bytes (audio_uint8.size={length} but "
-                                  f"hidden_bytes={hidden_bytes} and message_uint8.size={hidden_plane_img.size})")
+                                  f"hidden_bytes={hidden_bytes} and message_uint8.size={message_uint8.size})")
                         
                         # TODO verify if we can add partial blocks, i.e.:
                         message_uint8.ravel()[hidden_bytes : ] = audio_uint8[ : max_length]

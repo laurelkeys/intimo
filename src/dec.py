@@ -8,7 +8,7 @@ import numpy as np
 import sounddevice as sd
 from scipy.io import wavfile
 
-from bitplane import get_bit_plane
+from codec import decode
 from converter import convert
 
 def get_parser():
@@ -35,21 +35,16 @@ def get_parser():
 ###############################################################################
 
 def main(args):
-    # TODO receive an image as input and return the hidden audio file
     enc_img = cv2.imread(args.enc_image)
     if args.verbose:
         print(f"enc_img.shape:", enc_img.shape)
         print(f"enc_img.size:", enc_img.size)
         print(f"enc_img.ndim:", enc_img.ndim)
 
-    if enc_img.ndim == 2:
-        pass
-    else:
-        enc_img = enc_img[..., 1] # get the green channel (all have the same message as of now)
-    
-    hidden_plane_img = get_bit_plane(img=enc_img, plane=args.bit_plane)
-    assert hidden_plane_img.dtype == np.uint8
-    decoded_audio = convert(hidden_plane_img.flatten(), to='int16')
+    decoded_audio = decode(enc_img, args.bit_plane)
+    assert decoded_audio.dtype == np.uint8
+    decoded_audio = convert(decoded_audio, to='int16')
+
     if args.n_of_channels == 2:
         # FIXME convert decoded_audio to a 2D array if it's stereo
         warnings.warn("\nWarning: stereo audio isn't currently supported")
@@ -63,8 +58,8 @@ def main(args):
     if args.playback_audio:
         if args.verbose:
             print(f"Playing audio (~{decoded_audio.size // args.sample_rate}s)..")
-        # sd.play(decoded_audio, args.sample_rate)
-        # sd.wait() # wait until it is done playing
+        sd.play(decoded_audio, args.sample_rate)
+        sd.wait() # wait until it is done playing
         if args.verbose:
             print("done.")
 

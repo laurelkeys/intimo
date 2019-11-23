@@ -1,14 +1,23 @@
 import numpy as np
 
-def encode(bgr_img, bit_plane, message_uint8, debug=False):
-    height, width, depth = bgr_img.shape
-    max_bytes = height * width * depth // 8
+def max_bytes_and_bits(height, width, depth):
+    max_bytes = (height * width * depth) // 8
     max_bits = max_bytes * 8 # we can only store whole byte words
+    return max_bytes, max_bits
 
+def encode(bgr_img, bit_plane, message_uint8, debug=False):
+    if message_uint8.size == 0:
+        return bgr_img, False
+
+    height, width, depth = bgr_img.shape
+    max_bytes, max_bits = max_bytes_and_bits(height, width, depth)
+
+    filled_img = False
     message_bits = np.unpackbits(message_uint8)
     if message_bits.size > max_bits:
-        print(f"message_bits.size > max_bits ({message_bits.size})")
+        print(f"message_bits.size > max_bits ({message_bits.size} > {max_bits})")
         message_bits = message_bits[:max_bits]
+        filled_img = True
     
     r_message = message_bits[0::3]; r_length = r_message.size
     g_message = message_bits[1::3]; g_length = g_message.size
@@ -26,18 +35,16 @@ def encode(bgr_img, bit_plane, message_uint8, debug=False):
     b[:b_length] = (b[:b_length] & ~mask) | (b_message << bit_plane)
     
     if debug:
-        print(f"bit_plane={bit_plane}")
-        print(f"max_bytes={max_bytes}")
-        print(f"max_bits={max_bits}")
-        print(f"message_bits.size={message_bits.size}")
-        print(f"(r, g, b)_length=({r_length}, {g_length}, {b_length})")
-        print(f"bgr_img.shape={bgr_img.shape} | message_uint8.shape={message_uint8.shape}")
-        print(f"bgr_img.size={bgr_img.size}   | message_uint8.size={message_uint8.size}")
-        print(f"bgr_img.dtype={bgr_img.dtype} | message_uint8.dtype={message_uint8.dtype}")
+        print(f"bit_plane: {bit_plane}")
+        print(f"max_bytes: {max_bytes}, max_bits: {max_bits}")
+        print(f"message_bits.size: {message_bits.size}")
+        print(f"(r, g, b)_length: ({r_length}, {g_length}, {b_length})")
+        print(f"bgr_img.(shape, size, dtype): ({bgr_img.shape}, {bgr_img.size}, {bgr_img.dtype})")
+        print(f"message_uint8.(shape, size, dtype): ({message_uint8.shape}, {message_uint8.size}, {message_uint8.dtype})")
 
     return np.dstack((b.reshape((height, width)), 
                       g.reshape((height, width)), 
-                      r.reshape((height, width))))
+                      r.reshape((height, width)))), filled_img
     
 def decode(bgr_img, bit_plane):
     mask = 1 << bit_plane
