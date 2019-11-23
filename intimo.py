@@ -14,7 +14,7 @@ from item_store import ItemStore
 #########################################
 
 MONO, STEREO = 1, 2 # number of audio channels
-SAMPLE_RATE  = 44100 # 8kHz for voice recording
+SAMPLE_RATE  = 8000 # 8kHz for voice recording
 
 BIT_PLANE = 6
 
@@ -26,7 +26,7 @@ print("\ndevice_info")
 print(device_info)
 
 # camera setup
-cap = cv2.VideoCapture('kojima.png') # TODO change to cv2.VideoCapture(0) to use the webcam
+cap = cv2.VideoCapture(0) # TODO change to cv2.VideoCapture(0) to use the webcam
 
 height, width = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 hidden_plane = np.zeros((height, width), dtype='uint8')
@@ -49,7 +49,7 @@ stream = sd.InputStream(channels=MONO, samplerate=SAMPLE_RATE, dtype='int16',
 with stream:
     hidden_bits = 0 # next bit to write to (indexed on the flattened hidden_plane)
     done = False
-    FRAME_DELAY_MS = 250 # TODO decrease when using the webcam
+    FRAME_DELAY_MS = 10 # TODO decrease when using the webcam
     while cap.isOpened():
         ret, frame = cap.read()
         if ret:
@@ -62,7 +62,6 @@ with stream:
         for ch in [0, 1, 2]:
             out_frame[..., ch] = set_bit_plane_partial(in_frame[..., ch], BIT_PLANE, hidden_plane, changed_bits=hidden_bits)
         # out_frame = set_bit_plane_partial(gray_frame, BIT_PLANE, hidden_plane, changed_bits=hidden_bits)
-        print("shapes:", in_frame.shape, out_frame.shape)
         cv2.imshow('frame', out_frame)
         if done:
             fname = time.strftime("%Y%m%d-%H%M%S") + ".png"
@@ -75,10 +74,12 @@ with stream:
         if cv2.waitKey(FRAME_DELAY_MS) & 0xFF == ord('q'):
             break
 
-        in_data = np.concatenate(in_data_list.getAll()) # concatenate the stored audio blocks
-        assert in_data.dtype == np.int16
-        in_data = convert(in_data.reshape(-1), to='uint8')
-        length = in_data.size
+        stored_audio_blocks = in_data_list.getAll()
+        if len(stored_audio_blocks) > 0:
+            in_data = np.concatenate(stored_audio_blocks) # concatenate the stored audio blocks
+            assert in_data.dtype == np.int16
+            in_data = convert(in_data.reshape(-1), to='uint8')
+            length = in_data.size
 
         if not done:
             if hidden_bits + length > hidden_plane.size:
