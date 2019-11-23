@@ -1,1 +1,0 @@
-# TODO receive an image as input and return the hidden audio file
