@@ -1,14 +1,14 @@
 # intimo
 Hiding audio on video frames in real-time
 
+## Example usage
+> $ python3 enc.py -v --save_audio  
+> $ python3 dec.py `path/to/enc_img.png` -v --playback
+
 ## Install dependencies
 > pip3 install numpy opencv-python sounddevice
 
-## Example usage
-`$ python3 enc.py -v --save_audio`
-`$ python3 dec.py path/to/enc_img.png -v --playback`
-
-## [enc.py](https://github.com/laurelkeys/intimo/blob/master/src/enc.py) (Encoding)
+## Encoder: [enc.py](https://github.com/laurelkeys/intimo/blob/master/enc.py)
 ```
 usage: enc.py [-h] [--n_of_channels {1,2}] [--sample_rate {8000,44100}]
               [--bit_plane {0,1,2,3,4,5,6,7}] [--output_folder OUTPUT_FOLDER]
@@ -37,7 +37,7 @@ optional arguments:
   --verbose, -v         Increase verbosity
 ```
 
-## [dec.py](https://github.com/laurelkeys/intimo/blob/master/src/dec.py) (Decoding)
+## Decoder: [dec.py](https://github.com/laurelkeys/intimo/blob/master/dec.py)
 ```
 usage: dec.py [-h] [--n_of_channels {1,2}] [--sample_rate {8000,44100}]
               [--bit_plane {0,1,2,3,4,5,6,7}] [--output_folder OUTPUT_FOLDER]
