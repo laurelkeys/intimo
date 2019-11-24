@@ -1,7 +1,4 @@
-import os
-import sys
-import time
-import pprint
+import os, sys, time
 import argparse
 import warnings
 
@@ -15,22 +12,26 @@ from converter import convert
 
 def get_parser():
     parser = argparse.ArgumentParser(
-        description="Real-time steganography. "
-                    "Hiding audio data into image frames from a live camera input stream.")
+        description="Real-time steganography: "
+                    "hiding captured audio data into image frames from a live camera input stream.")
+    
     parser.add_argument("--n_of_channels", "-ch", type=int, choices=[1, 2], default=1, 
                         help="Number of audio channels (1=mono, 2=stereo)  (defaults to %(default)d)")
     parser.add_argument("--sample_rate", "-sr", type=int, choices=[8000, 44100], default=8000, 
                         help="Sample rate of audio recording  (defaults to %(default)dHz)")
-    parser.add_argument("--bit_plane", "-b", type=int, choices=range(0, 8), default=6, 
+    parser.add_argument("--bit_plane", "-b", type=int, choices=range(0, 8), default=5, 
                         help="Bit plane in which to hide the captured audio  (defaults to %(default)d)")
+    
     parser.add_argument("--output_folder", "-o", type=str, default=".", 
                         help="Output folder to store the saved image frames  (defaults to '%(default)s/')")
-    parser.add_argument("--save_audio", "-a", action="store_true", 
+    
+    parser.add_argument("--save_audio", action="store_true", 
                         help="Save the audio file retrieved from the image as well")
-    parser.add_argument("--grayscale", "-g", action="store_true", 
-                        help="Use grayscale frames instead of RGB")
-    parser.add_argument("--wait", "-w", action="store_true", 
+    parser.add_argument("--grayscale", action="store_true", 
+                        help="Use grayscale frames instead")
+    parser.add_argument("--wait", action="store_true", 
                         help="Wait for a key press to save frames")
+    
     parser.add_argument("--verbose", "-v", action="store_true", 
                         help="Increase verbosity")
     return parser
@@ -38,29 +39,23 @@ def get_parser():
 ###############################################################################
 
 def setup_camera(args):
-    if args.verbose:
-        print("device_info:")
-        pprint.pprint(sd.query_devices(kind='input'))
-    
-    # DirectShow (via videoInput)
-    cap = cv2.VideoCapture(index=0, apiPreference=cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(apiPreference=cv2.CAP_DSHOW, # DirectShow (via videoInput)
+                           index=0)
     if not cap.read()[0]:
         raise Exception("No camera found")
-
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    depth  = 1 if args.grayscale else 3
-    if depth == 1:
-        warnings.warn("\nWarning: grayscale video isn't currently supported")
-    
-    return cap, height, width, depth
+    height, width = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), \
+                    int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    return cap, height, width
 
 def save_frame(__frame, message_uint8, stream, args):
-    if args.wait:
-        # FIXME check if a key (e.g. space) was pressed to save this finished frame
-        warnings.warn("\nWarning: waiting for key press isn't currently supported")
-    
-    fname = f"{time.strftime('%Y%m%d-%H%M%S')}_{stream._samplerate:.0f}_{stream._channels:.0f}_{args.bit_plane}"
+    if args.wait: pass
+    # TODO check if a key (e.g. space) was pressed to save this finished frame
+
+    # "channels_samplerate_bitplane_YYYYmmdd-HHMMSS"
+    fname = '_'.join([str(int(stream._channels)),
+                      str(int(stream._samplerate)),
+                      str(args.bit_plane),
+                      time.strftime('%Y%m%d-%H%M%S')])
     fname = os.path.join(args.output_folder, fname)
 
     cv2.imwrite(filename=fname + ".png", img=__frame)
@@ -71,9 +66,8 @@ def save_frame(__frame, message_uint8, stream, args):
         decoded_audio = decode(__frame, args.bit_plane)
         decoded_audio = convert(decoded_audio, to='int16')
         
-        if stream._channels == 2:
-            # FIXME convert decoded_audio to a 2D array if it's stereo
-            warnings.warn("\nWarning: stereo audio isn't currently supported")
+        if stream._channels == 2: pass
+        # TODO convert decoded_audio to a 2D array if it's stereo
         
         wavfile.write(filename=fname + ".wav", rate=int(stream._samplerate), data=decoded_audio)
         if args.verbose:
@@ -87,13 +81,22 @@ def main(args):
     if args.wait:
         warnings.warn("\nWarning: waiting for key press isn't currently supported")
 
-    cap, height, width, depth = setup_camera(args) # NOTE this takes around 20s
+    if args.verbose:
+        print("device_info: {")
+        for k, v in sd.query_devices(kind='input').items():
+            print(f"  {k}: {v}")
+        print("}")
+
+    cap, height, width = setup_camera(args)
+    depth = 3 # 1 if args.grayscale else 3
     print()
+
     buffer_factor = 1.2
     message_uint8 = np.zeros(dtype='uint8', shape=int(buffer_factor * (height * width * depth) // 8 ))
     if args.verbose:
         print(f"(height, width, depth): ({height}, {width}, {depth})")
         print("message_uint8.size:", message_uint8.size)
+        print("buffer_factor:", buffer_factor)
 
     # list to store the audio blocks captured by the audio input stream
     in_data_list = []
@@ -179,5 +182,4 @@ def main(args):
 FRAME_DELAY_MS = 10
 if __name__ == '__main__':
     args = get_parser().parse_args()
-    args.verbose = True # FIXME remove after testing
     main(args)
